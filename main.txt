@@ -1,0 +1,82 @@
+import pandas as pd
+import numpy as np
+
+def main():
+    print("=== АНАЛИЗ ДАННЫХ ИЗ DZ.CSV ===\n")
+    
+    # 1. Загружаем данные из dz.csv
+    print("1. Загружаем данные из dz.csv...")
+    df = pd.read_csv('dz.csv')
+    
+    print("Первые 5 строк данных:")
+    print(df.head())
+    print("\nИнформация о данных:")
+    print(df.info())
+    print("\nСтатистическое описание:")
+    print(df.describe())
+    
+    # 2. Анализируем пропуски
+    print("\n2. Анализ пропусков:")
+    print("Количество пропусков в каждом столбце:")
+    print(df.isnull().sum())
+    
+    # 3. Обрабатываем пропуски
+    print("\n3. Обработка пропусков...")
+    
+    # Пропуски по зарплате заполняем медианой по городу
+    # Если города нет - заполняем нулем
+    print("Заполняем пропуски в зарплате...")
+    
+    # Создаем копию для безопасной работы
+    df_processed = df.copy()
+    
+    # Заполняем пропуски в зарплате медианой по городу
+    df_processed['Salary'] = df_processed.groupby('City')['Salary'].transform(
+        lambda x: x.fillna(x.median())
+    )
+    
+    # Если остались пропуски (когда город не указан), заполняем нулем
+    df_processed['Salary'].fillna(0, inplace=True)
+    
+    # Пропуски по городу оставляем как есть (не изменяем)
+    
+    print("Данные после обработки пропусков:")
+    print(df_processed)
+    
+    # 4. Определяем среднюю зарплату по городу
+    print("\n4. Средняя зарплата по городу:")
+    
+    # Группируем по городу и считаем среднюю зарплату
+    salary_by_city = df_processed.groupby('City')['Salary'].agg(['mean', 'count']).round(2)
+    salary_by_city.columns = ['Средняя зарплата', 'Количество сотрудников']
+    
+    print(salary_by_city)
+    
+    # Дополнительно показываем медиану для сравнения
+    print("\nМедианная зарплата по городу:")
+    median_by_city = df_processed.groupby('City')['Salary'].median().round(2)
+    print(median_by_city)
+    
+    # 5. Итоговая статистика
+    print("\n5. Итоговая статистика:")
+    print(f"Общее количество сотрудников: {len(df_processed)}")
+    print(f"Общая средняя зарплата: {df_processed['Salary'].mean():.2f}")
+    print(f"Общая медианная зарплата: {df_processed['Salary'].median():.2f}")
+    
+    # Показываем, какие записи были изменены
+    print("\n6. Записи, где были заполнены пропуски в зарплате:")
+    changed_mask = df['Salary'].isnull() & df_processed['Salary'].notna()
+    if changed_mask.any():
+        print("Были заполнены пропуски для:")
+        for idx in df[changed_mask].index:
+            name = df.loc[idx, 'Name']
+            city = df.loc[idx, 'City'] if pd.notna(df.loc[idx, 'City']) else "Не указан"
+            old_salary = "Пропуск"
+            new_salary = df_processed.loc[idx, 'Salary']
+            print(f"  - {name} ({city}): {old_salary} → {new_salary}")
+    else:
+        print("Пропуски в зарплате не были найдены.")
+
+if __name__ == "__main__":
+    main()
+
